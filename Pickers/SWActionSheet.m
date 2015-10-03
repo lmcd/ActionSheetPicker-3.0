@@ -7,9 +7,9 @@
 
 static const float delay = 0.f;
 
-static const float duration = .25f;
+static const float duration = 0.15f;
 
-static const enum UIViewAnimationOptions options = UIViewAnimationOptionCurveEaseIn;
+static const enum UIViewAnimationOptions options = UIViewAnimationOptionCurveLinear;
 
 
 @interface SWActionSheetVC : UIViewController
@@ -42,25 +42,37 @@ static const enum UIViewAnimationOptions options = UIViewAnimationOptionCurveEas
 {
     CGPoint fadeOutToPoint = CGPointMake(view.center.x,
             self.center.y + CGRectGetHeight(view.frame));
-    // Window of app
-    //UIWindow *appWindow = [UIApplication sharedApplication].windows.firstObject;
-    // Actions
+    
     void (^actions)() = ^{
-        self.center = fadeOutToPoint;
         self.backgroundColor = [UIColor colorWithWhite:0.f alpha:0.0f];
     };
-    void (^completion)(BOOL) = ^(BOOL finished) {
-    //    if (![appWindow isKeyWindow])
-    //        [appWindow makeKeyAndVisible];
-        [self destroyWindow];
-        [self removeFromSuperview];
-    };
-    // Do actions animated or not
+    
     if (animated) {
-        [UIView animateWithDuration:duration delay:delay options:options animations:actions completion:completion];
+        [CATransaction begin];
+        
+        CASpringAnimation *animation = [[CASpringAnimation alloc] init];
+        animation.damping = 500;
+        animation.mass = 3;
+        animation.stiffness = 1000;
+        animation.initialVelocity = 0;
+        animation.fromValue = [NSValue valueWithCGPoint:self.layer.position];
+        animation.toValue = [NSValue valueWithCGPoint:fadeOutToPoint];
+        animation.duration = 0.5;
+        animation.keyPath = @"position";
+        
+        [CATransaction setCompletionBlock:^{
+            [self destroyWindow];
+            [self removeFromSuperview];
+        }];
+        
+        [self.layer addAnimation:animation forKey:@"position"];
+        self.layer.position = fadeOutToPoint;
+        
+        [CATransaction commit];
+        
+        [UIView animateWithDuration:duration delay:delay options:options animations:actions completion:nil];
     } else {
         actions();
-        completion(YES);
     }
     self.presented = NO;
 }
@@ -145,14 +157,28 @@ static const enum UIViewAnimationOptions options = UIViewAnimationOptionCurveEas
     CGPoint toPoint;
     CGFloat y = self.center.y - CGRectGetHeight(view.frame);
     toPoint = CGPointMake(self.center.x, y);
+    
     // Present actions
     void (^animations)() = ^{
-        self.center = toPoint;
-        self.backgroundColor = [UIColor colorWithWhite:0.f alpha:0.5f];
+        self.backgroundColor = [UIColor colorWithWhite:0.f alpha:0.4f];
     };
     // Present sheet
-    if (animated)
+    if (animated) {
+        CASpringAnimation *animation = [[CASpringAnimation alloc] init];
+        animation.damping = 500;
+        animation.mass = 3;
+        animation.stiffness = 1000;
+        animation.initialVelocity = 0;
+        animation.fromValue = [NSValue valueWithCGPoint:self.layer.position];
+        animation.toValue = [NSValue valueWithCGPoint:toPoint];
+        animation.duration = 0.5;
+        animation.keyPath = @"position";
+        
+        [self.layer addAnimation:animation forKey:@"position"];
+        self.layer.position = toPoint;
+        
         [UIView animateWithDuration:duration delay:delay options:options animations:animations completion:nil];
+    }
     else
         animations();
     self.presented = YES;
@@ -203,7 +229,7 @@ static const enum UIViewAnimationOptions options = UIViewAnimationOptionCurveEas
 }
 
 - (BOOL)prefersStatusBarHidden {
-	return [UIApplication sharedApplication].statusBarHidden;
+    return [UIApplication sharedApplication].statusBarHidden;
 }
 
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation

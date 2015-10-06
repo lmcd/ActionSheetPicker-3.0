@@ -114,7 +114,7 @@ CG_INLINE BOOL isIPhone4() {
 
 - (id)storedOrigin;
 
-- (UIToolbar *)createPickerToolbarWithTitle:(NSString *)aTitle;
+- (UIView *)createPickerToolbarWithTitle:(NSString *)aTitle;
 
 - (UIBarButtonItem *)createButtonWithType:(UIBarButtonSystemItem)type target:(id)target action:(SEL)buttonAction;
 
@@ -224,22 +224,9 @@ CG_INLINE BOOL isIPhone4() {
     if (isIPhone4()) {
         masterView.backgroundColor = [UIColor colorWithRed:0.97 green:0.97 blue:0.97 alpha:1.0];
     }
+    
     self.toolbar = [self createPickerToolbarWithTitle:self.title];
     [masterView addSubview:self.toolbar];
-
-    //ios7 picker draws a darkened alpha-only region on the first and last 8 pixels horizontally, but blurs the rest of its background.  To make the whole popup appear to be edge-to-edge, we have to add blurring to the remaining left and right edges.
-    if (NSFoundationVersionNumber > NSFoundationVersionNumber_iOS_6_1) {
-        CGRect rect = CGRectMake(0, self.toolbar.frame.origin.y, _borderWidth, masterView.frame.size.height - self.toolbar.frame.origin.y);
-        UIToolbar *leftEdge = [[UIToolbar alloc] initWithFrame:rect];
-        rect.origin.x = masterView.frame.size.width - _borderWidth;
-        UIToolbar *rightEdge = [[UIToolbar alloc] initWithFrame:rect];
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "UnavailableInDeploymentTarget"
-        leftEdge.barTintColor = rightEdge.barTintColor = self.toolbar.barTintColor;
-#pragma clang diagnostic pop
-        [masterView insertSubview:leftEdge atIndex:0];
-        [masterView insertSubview:rightEdge atIndex:0];
-    }
 
     self.pickerView = [self configuredPickerView];
     NSAssert(_pickerView != NULL, @"Picker view failed to instantiate, perhaps you have invalid component data.");
@@ -444,53 +431,15 @@ CG_INLINE BOOL isIPhone4() {
 }
 
 
-- (UIToolbar *)createPickerToolbarWithTitle:(NSString *)title {
-    CGRect frame = CGRectMake(0, 0, self.viewSize.width, 44);
-    UIToolbar *pickerToolbar = [[UIToolbar alloc] initWithFrame:frame];
-    pickerToolbar.barStyle = (NSFoundationVersionNumber > NSFoundationVersionNumber_iOS_6_1) ? UIBarStyleDefault : UIBarStyleBlackTranslucent;
-
-    NSMutableArray *barItems = [[NSMutableArray alloc] init];
-
-    if (!self.hideCancel) {
-        [barItems addObject:self.cancelBarButtonItem];
-    }
-
-    NSInteger index = 0;
-    for (NSDictionary *buttonDetails in self.customButtons) {
-        NSString *buttonTitle = buttonDetails[kButtonTitle];
-
-        UIBarButtonItem *button;
-        if (NSFoundationVersionNumber > NSFoundationVersionNumber_iOS_6_1) {
-            button = [[UIBarButtonItem alloc] initWithTitle:buttonTitle style:UIBarButtonItemStylePlain
-                                                     target:self action:@selector(customButtonPressed:)];
-        }
-        else {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-            button = [[UIBarButtonItem alloc] initWithTitle:buttonTitle style:UIBarButtonItemStyleBordered
-                                                     target:self action:@selector(customButtonPressed:)];
-#pragma clang diagnostic pop
-        }
-
-        button.tag = index;
-        [barItems addObject:button];
-        index++;
-    }
-
-    UIBarButtonItem *flexSpace = [self createButtonWithType:UIBarButtonSystemItemFlexibleSpace target:nil action:nil];
-    [barItems addObject:flexSpace];
-    if (title) {
-        UIBarButtonItem *labelButton;
-
-        labelButton = [self createToolbarLabelWithTitle:title titleTextAttributes:self.titleTextAttributes andAttributedTitle:self.attributedTitle];
-
-        [barItems addObject:labelButton];
-        [barItems addObject:flexSpace];
-    }
-    [barItems addObject:self.doneBarButtonItem];
-
-    [pickerToolbar setItems:barItems animated:NO];
-    return pickerToolbar;
+- (UIView *)createPickerToolbarWithTitle:(NSString *)title {
+    UINavigationBar *navBar = [[UINavigationBar alloc] initWithFrame:CGRectMake(0, 0, self.viewSize.width, 44)];
+    
+    UINavigationItem *navItem = [[UINavigationItem alloc] initWithTitle:title];
+    navItem.leftBarButtonItem = self.cancelBarButtonItem;
+    navItem.rightBarButtonItem = self.doneBarButtonItem;
+    [navBar pushNavigationItem:navItem animated:NO];
+    
+    return navBar;
 }
 
 - (UIBarButtonItem *)createToolbarLabelWithTitle:(NSString *)aTitle
